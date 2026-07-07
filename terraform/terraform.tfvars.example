@@ -1,0 +1,12 @@
+# انسخ الملف ده باسم terraform.tfvars وعدّل القيم حسب حسابك
+
+aws_region       = "us-east-1"
+project_name     = "self-healing-app"
+instance_type    = "t2.micro"
+key_name         = "your-key-pair-name"          # لازم يكون موجود بالفعل في نفس الـ region
+docker_image     = "mohamedabozaid97531/todo-app:v1"
+app_port         = 5000
+min_size         = 1
+max_size         = 3
+desired_capacity = 2
+allowed_ssh_cidr = "0.0.0.0/0"                    # الأفضل تحطه IP بتاعك + /32

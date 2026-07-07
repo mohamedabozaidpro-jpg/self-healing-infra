@@ -1,10 +1,16 @@
-from flask import Flask, request, redirect, url_for
+from flask import Flask, request, redirect, url_for, Response
+from prometheus_client import Counter, Gauge, generate_latest, CONTENT_TYPE_LATEST
 
 app = Flask(__name__)
 
-# تخزين المهام في الذاكرة (مؤقت - بيتصفر لو السيرفر اتعمله ريستارت)
 tasks = []
 next_id = 1
+
+REQUESTS_TOTAL = Counter("app_requests_total", "Total requests")
+REQUESTS_ERRORS = Counter("app_requests_errors_total", "Total failed requests")
+TASKS_GAUGE = Gauge("app_tasks_count", "Current number of tasks")
+APP_UP = Gauge("app_up", "1 if app is running")
+APP_UP.set(1)
 
 PAGE_TEMPLATE = """
 <!DOCTYPE html>
@@ -55,6 +61,18 @@ def health():
     return {"status": "healthy"}, 200
 
 
+@app.route("/metrics")
+def metrics():
+    TASKS_GAUGE.set(len(tasks))
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
+
+
+@app.before_request
+def before_request():
+    if request.path != "/metrics":
+        REQUESTS_TOTAL.inc()
+
+
 @app.route("/")
 def index():
     if not tasks:
@@ -95,6 +113,12 @@ def delete(task_id):
     global tasks
     tasks = [t for t in tasks if t["id"] != task_id]
     return redirect(url_for("index"))
+
+
+@app.route("/simulate/error")
+def simulate_error():
+    REQUESTS_ERRORS.inc()
+    return {"status": "simulated error"}, 500
 
 
 if __name__ == "__main__":
