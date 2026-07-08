@@ -1,0 +1,27 @@
+---
+- name: Self-healing playbook - clear logs and restart app container
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    target_container: "{{ container_name | default('todo-app-container') }}"
+
+  tasks:
+    - name: مسح ملف اللوجز جوه الكونتينر
+      community.docker.docker_container_exec:
+        container: "{{ target_container }}"
+        command: sh -c "truncate -s 0 /app/logs/app.log 2>/dev/null || true"
+      register: clear_logs_result
+      ignore_errors: true
+
+    - name: عمل Restart للكونتينر
+      community.docker.docker_container:
+        name: "{{ target_container }}"
+        state: started
+        restart: true
+      register: restart_result
+
+    - name: طباعة النتيجة
+      debug:
+        msg: "تم تنفيذ الإصلاح التلقائي على الكونتينر: {{ target_container }}"

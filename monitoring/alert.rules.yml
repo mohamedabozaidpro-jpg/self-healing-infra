@@ -1,0 +1,29 @@
+groups:
+  - name: todo-app-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: (rate(app_requests_errors_total[1m]) / clamp_min(rate(app_requests_total[1m]), 0.0001)) > 0.05
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "معدل الأخطاء تعدى 5%"
+          description: "معدل الأخطاء في التطبيق تعدى 5% خلال آخر دقيقة."
+
+      - alert: AppDown
+        expr: app_up == 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "التطبيق واقع"
+          description: "التطبيق مش بيرد على /metrics، يعني على الأرجح واقع أو الكونتينر مش شغال."
+
+      - alert: InstanceDown
+        expr: up{job="todo-app"} == 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus مش قادر يوصل للتطبيق"
+          description: "Prometheus فشل في scrape الـ /metrics من التطبيق لمدة 15 ثانية."
