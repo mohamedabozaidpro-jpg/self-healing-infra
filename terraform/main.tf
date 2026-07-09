@@ -98,6 +98,22 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = [var.allowed_ssh_cidr]
   }
 
+  ingress {
+    description     = "Allow Prometheus on monitoring server to scrape app metrics"
+    from_port       = var.app_port
+    to_port         = var.app_port
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitoring_sg.id]
+  }
+
+  ingress {
+    description     = "Allow Ansible on monitoring server to SSH into app instances"
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.monitoring_sg.id]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

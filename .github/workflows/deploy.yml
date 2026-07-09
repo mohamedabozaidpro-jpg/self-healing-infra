@@ -1,6 +1,5 @@
-name: Build and Push Docker Image
+name: Build, Push, and Deploy
 
-# يشتغل تلقائيًا لما حد يعمل push على main، بس لو التعديل في فولدر app/
 on:
   push:
     branches:
@@ -11,10 +10,16 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.tag }}
 
     steps:
       - name: سحب الكود من الريبو
         uses: actions/checkout@v4
+
+      - name: تحديد رقم النسخة
+        id: set_tag
+        run: echo "tag=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
       - name: تسجيل الدخول على Docker Hub
         uses: docker/login-action@v3
@@ -35,7 +40,24 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:${{ github.run_number }}
 
-      - name: طباعة اسم الصورة الجديدة
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: إعداد بيانات AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: تحديث السيرفرات على AWS (Instance Refresh)
         run: |
-          echo "تم رفع الصورة بنجاح:"
-          echo "${{ secrets.DOCKERHUB_USERNAME }}/todo-app:${{ github.run_number }}"
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name self-healing-app-asg \
+            --preferences '{"MinHealthyPercentage": 50, "InstanceWarmup": 60}'
+
+      - name: طباعة رسالة تأكيد
+        run: |
+          echo "تم بدء تحديث السيرفرات تلقائيًا على AWS بصورة جديدة."
